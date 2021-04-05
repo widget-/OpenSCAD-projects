@@ -1,7 +1,10 @@
-include <BOSL/constants.scad>
-use <BOSL/transforms.scad>
-use <BOSL/shapes.scad>
-use <BOSL/masks.scad>
+
+include <BOSL2/std.scad>
+
+// include <BOSL/constants.scad>
+// use <BOSL/transforms.scad>
+// use <BOSL/shapes.scad>
+// use <BOSL/masks.scad>
 
 // use <C:\Users\Widget\AppData\Local\Microsoft\Windows\Fonts\RobotoMono-Bold.ttf>
 // use <C:\Users\Widget\AppData\Local\Microsoft\Windows\Fonts\RobotoMono-Bold.ttf>
@@ -117,10 +120,10 @@ difference() {
     up(capsule_length/2) {
         // center cutout
         up(thickness*3/2+extra_neck_length/2)
-        cyl(r=capsule_diameter/2+slop, h=capsule_length+thickness*2+extra_neck_length, fillet=capsule_diameter/2);
+        cyl(r=capsule_diameter/2+slop, h=capsule_length+thickness*2+extra_neck_length, rounding=capsule_diameter/2);
 
         // side cutouts for removal
-        xspread(l=capsule_diameter*2+thickness*4)
+        xcopies(l=capsule_diameter*2+thickness*4, n=2)
         up(thickness/2)
         cyl(r=capsule_diameter+thickness+slop, h=capsule_length, chamfer=(capsule_diameter)/2);
     }
