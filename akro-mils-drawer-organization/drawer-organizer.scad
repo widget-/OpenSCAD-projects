@@ -35,6 +35,7 @@ difference() {
     // outer shell
     cuboid([_width, _length, _height], fillet=_outer_fillet, edges=EDGES_ALL-EDGES_TOP);
 
+    // inner cutouts
     up(wall_thickness)
     yspread(n=rows, spacing=(_length-wall_thickness)/rows)
     xspread(n=columns, spacing=(_width-wall_thickness)/columns)
