@@ -1,6 +1,6 @@
 include <BOSL2/std.scad>
 
-thickness = 3;
+thickness = 1.6;
 
 ball_radius = 215;
 neck_hole_radius = 110;
@@ -9,19 +9,34 @@ center_band_width = 50;
 rear_button_radius = 30;
 rear_button_band_width = 15;
 
-eye_width = 60;
-eye_height = 90;
+eye_and_mouth_border = 6;
+
+eye_width = 48;
+eye_height = 72;
 eye_separation = 130;
 
-outer_segment_width = 15;
-outer_segments = 12;
+mouth_top_radius_x = 50;
+mouth_top_radius_z = 60;
+mouth_bottom_radius_x = 87.5;
+mouth_bottom_radius_z = 140;
+mouth_hole_spacing = 7;
+mouth_hole_size = 4;
+
+eye_to_crown = 80;
+crown_radius = 580/2/PI;
+crown_circumference_minor = 280;
+crown_circumference_major = 310;
+
+
+outer_segment_width = 8;
+outer_segments = 24;
 
 hollow = true; // for resin prints
 screw_holes = false; // for fdm prints
 
-slop = 0.1; // slop for combining holes
+slop = 0.2; // slop for combining holes
 
-rough_render = true;
+rough_render = false;
 explode = false;
 explode_distance = 50;
 
@@ -29,19 +44,17 @@ prerender = true;
 
 
 
-// _segment_inner_angle = (outer_segment_width/ball_radius) * (360/(2*PI));
 _top_cutout_radius = outer_segments*outer_segment_width/6;
 _top_ring_height_offset = sin(acos(_top_cutout_radius/ball_radius)) * ball_radius;
-_bottom_ring_height_offset = -sin(acos(neck_hole_radius/ball_radius)) * ball_radius;
+_bottom_ring_height_offset = -sin(acos((neck_hole_radius+outer_segment_width)/ball_radius)) * ball_radius;
+_crown_attachment_length = _top_ring_height_offset + (mouth_bottom_radius_z+mouth_top_radius_z)/2 - eye_to_crown - thickness;
 
 
-// $fa = $preview ? 5 : rough_render ? 10 : .5;
-// $fs = $preview ? 5 : rough_render ? 10 : .5;
-$fa = 5;
-$fs = 5;
+$fa = $preview ? 5 : rough_render ? 10 : 1;
+$fs = $preview ? 5 : rough_render ? 10 : 1;
 
 module cache() {
-    if (prerender)
+    if (prerender && $preview)
         render()
         children();
     else
@@ -56,16 +69,10 @@ module top_leg() {
         difference() {
             // vertical ring
             tube(h=outer_segment_width, ir=ball_radius-outer_segment_width, or=ball_radius, orient=LEFT, center=true);
-            // inner cutout
-            intersection() {
-                tube(h=outer_segment_width-thickness*2, ir=ball_radius-outer_segment_width+thickness, or=ball_radius-thickness, orient=LEFT, center=true);
 
-                union() {
-                    cuboid([ball_radius*3, ball_radius*3, center_band_width/2+outer_segment_width+thickness], anchor=BOTTOM);
-                    
-                    cyl(h=ball_radius, r=_top_cutout_radius+outer_segment_width+thickness, anchor=BOTTOM);
-                }
-            }
+            // inner cutout
+            tube(h=outer_segment_width-thickness*2+slop*2, ir=ball_radius-outer_segment_width+thickness-slop, or=ball_radius-thickness+slop, orient=LEFT, center=true);
+
             // top cutout
             cyl(h=ball_radius+10, r=_top_cutout_radius, orient=UP, anchor=BOTTOM, $fn=outer_segments, realign=true);
 
@@ -83,9 +90,8 @@ module bottom_leg() {
             // vertical ring
             tube(h=outer_segment_width, ir=ball_radius-outer_segment_width, or=ball_radius, orient=LEFT, center=true);
             // inner cutout
-            tube(h=outer_segment_width-thickness*2, ir=ball_radius-outer_segment_width+thickness, or=ball_radius-thickness, orient=LEFT, center=true);
-            // bottom cutout (the sqrt(neck_hole_radius/6) accounts for outer round part of radius)
-            cyl(h=ball_radius+10, r=neck_hole_radius+sqrt(neck_hole_radius/6), orient=UP, anchor=TOP, $fn=outer_segments, realign=true);
+            tube(h=outer_segment_width-thickness*2+slop*2, ir=ball_radius-outer_segment_width+thickness-slop, or=ball_radius-thickness+slop, orient=LEFT, center=true);
+            cyl(h=ball_radius+10, r=neck_hole_radius+outer_segment_width, orient=UP, anchor=TOP);
         }
         sphere(r=ball_radius);
     }
@@ -100,7 +106,7 @@ module top_ring() {
 
             zrot_copies(n=outer_segments)
             if ($idx<outer_segments/2)
-            tube(h=outer_segment_width-thickness*2, ir=ball_radius-outer_segment_width+thickness, or=ball_radius-thickness, orient=LEFT, center=true, anchor=TOP);
+            tube(h=outer_segment_width-thickness*2-slop*2, ir=ball_radius-outer_segment_width+thickness+slop, or=ball_radius-thickness-slop, orient=LEFT, center=true, anchor=TOP);
         }
         // exclude bottom half
         cuboid(ball_radius*2, anchor=TOP);
@@ -121,66 +127,242 @@ module bottom_ring() {
     difference() {
         union() {
             up(_bottom_ring_height_offset+outer_segment_width)
-            cyl(h=outer_segment_width, r=neck_hole_radius, orient=UP, anchor=TOP);
+            cyl(h=outer_segment_width, r=neck_hole_radius+outer_segment_width, orient=UP, anchor=TOP);
 
             zrot_copies(n=outer_segments)
             if ($idx<outer_segments/2)
-            tube(h=outer_segment_width-thickness*2, ir=ball_radius-outer_segment_width+thickness, or=ball_radius-thickness, orient=LEFT, center=true, anchor=TOP);
+            bottom_half(z=_bottom_ring_height_offset+outer_segment_width*2)
+            tube(h=outer_segment_width-thickness*2-slop*2, ir=ball_radius-outer_segment_width+thickness+slop, or=ball_radius-thickness-slop, orient=LEFT, center=true, anchor=TOP);
         }
-        // limit length of connectors
-        tube(h=ball_radius*2, ir=neck_hole_radius+outer_segment_width, or=ball_radius, anchor=TOP);
+
         // center hole
-        cyl(h=ball_radius*2, r=neck_hole_radius-outer_segment_width, anchor=TOP);
-        // cutout inner tube to make hollow
-        #up(_bottom_ring_height_offset + outer_segment_width/2)
-        tube(h=outer_segment_width-thickness*2, or=neck_hole_radius-thickness, ir=neck_hole_radius-outer_segment_width+thickness, orient=UP, center=true);
+        cyl(h=ball_radius*2, r=neck_hole_radius, anchor=TOP);
     }
 }
 
 module middle_ring() {
     cache()
-    intersection() {
-        difference() {
-            union() {
-                tube(h=center_band_width, or=ball_radius, ir=ball_radius-outer_segment_width, orient=UP, center=true);
+    front_half()
+    left_half(x=outer_segment_width/2-thickness)
+    union() {
+        intersection() {
+            difference() {
+                union() {
+                    tube(h=center_band_width, or=ball_radius, ir=ball_radius-outer_segment_width, orient=UP, center=true);
 
-                zrot_copies(n=outer_segments)
-                if ($idx<outer_segments/2)
-                cache()
-                difference() {
-                    tube(h=outer_segment_width-thickness*2, ir=ball_radius-outer_segment_width+thickness, or=ball_radius-thickness, orient=LEFT, center=true);
-                    zflip_copy(offset=center_band_width/2+outer_segment_width)
-                    cuboid([outer_segment_width, ball_radius*2, ball_radius], anchor=BOTTOM);
+                    difference() {
+                        right(slop)
+                        tube(h=outer_segment_width-thickness*2-slop*2, ir=ball_radius-outer_segment_width+thickness+slop, or=ball_radius-thickness-slop, orient=LEFT, center=true);
+                        zflip_copy(offset=center_band_width/2+outer_segment_width)
+                        cuboid([outer_segment_width, ball_radius*2, ball_radius], anchor=BOTTOM);
+                    }
+                }
+                // cutout inner tube to make hollow
+                intersection() {                
+                    difference() {
+                        tube(h=center_band_width-thickness*2+slop*2, or=ball_radius-thickness+slop, ir=ball_radius-outer_segment_width+thickness-slop, orient=UP, center=true);
+                        
+                        zrot(-360/outer_segments+asin(thickness*4/ball_radius))
+                        right_half();
+                    }
+                    sphere(r=ball_radius-thickness+slop);
+                }
+                
+                zrot(-360/outer_segments)
+                right_half(x=outer_segment_width/2-thickness);
+            }
+
+            sphere(r=ball_radius);
+        }
+        
+        intersection() {                
+            difference() {
+                tube(h=center_band_width-thickness*2-slop*2, or=ball_radius-thickness-slop, ir=ball_radius-outer_segment_width+thickness+slop, orient=UP, center=true);
+                
+                zrot(-360/outer_segments-asin(thickness*2/ball_radius))
+                right_half();
+
+                zrot(-360/outer_segments+asin(thickness*4/ball_radius))
+                left_half();
+            }
+            sphere(r=ball_radius-thickness-slop);
+        }
+        
+    }
+}
+
+module eyes() {
+    front_half() {
+        union() {
+            // base
+            color("white")
+            difference() {
+                sphere(r=ball_radius+thickness);
+                sphere(r=ball_radius);
+
+                left(eye_width/2+eye_separation/2) {
+                    zscale(eye_height/eye_width)
+                    tube(h=ball_radius*3, ir=eye_width, or=ball_radius*2, orient=BACK, center=true);
                 }
             }
-            // cutout inner tube to make hollow
-            tube(h=outer_segment_width-thickness*2, or=ball_radius-thickness, ir=ball_radius-outer_segment_width+thickness, orient=UP, center=true);
+            
+            // outer ring
+            color("black")
+            difference() {
+                sphere(r=ball_radius+thickness*2);
+                sphere(r=ball_radius+thickness);
+
+                left(eye_width/2+eye_separation/2) {
+                    zscale(eye_height/eye_width) {
+                        tube(h=ball_radius*3, ir=eye_width, or=ball_radius*2, orient=BACK, center=true);
+                        cyl(h=ball_radius*3, r=eye_width-eye_and_mouth_border, orient=BACK);
+                    }
+                }
+            }
+
+            // inner
+            color("black")
+            difference() {
+                sphere(r=ball_radius+thickness*2);
+                sphere(r=ball_radius+thickness);
+
+                left(eye_width/4+eye_separation/2) {
+                    zscale(eye_height/eye_width) {
+                        tube(h=ball_radius*3, ir=eye_width*2/3, or=ball_radius*2, orient=BACK, center=true);
+                        cyl(h=ball_radius*3, r=eye_width/3, orient=BACK);
+                    }
+                }
+            }
         }
-        sphere(r=ball_radius);
+    }
+}
+
+module mouth() {
+    bottom_half()
+    front_half()
+    difference() {
+        union() {
+            // base
+            color("red")
+            difference() {
+                sphere(r=ball_radius+thickness+.1); // +.1 gets around openscad bug for mixed up colors
+                sphere(r=ball_radius);
+
+                zscale(mouth_bottom_radius_z/mouth_bottom_radius_x)
+                tube(h=ball_radius*3, ir=mouth_bottom_radius_x, or=ball_radius*2, orient=BACK, center=true);
+
+                zscale(mouth_top_radius_z/mouth_top_radius_x)
+                cyl(h=ball_radius*3, r=mouth_top_radius_x, orient=BACK);
+                
+                down(mouth_bottom_radius_z/2)
+                xrot(90)
+                grid2d(size=[mouth_bottom_radius_x*2, mouth_bottom_radius_z], spacing=mouth_hole_spacing, stagger=true)
+                cyl(d=mouth_hole_size, h=ball_radius*2, anchor=BOTTOM);
+            }
+
+            // outline top
+            color("black")
+            difference() {
+                sphere(r=ball_radius+thickness*2);
+                sphere(r=ball_radius);
+
+                zscale(mouth_bottom_radius_z/mouth_bottom_radius_x)
+                tube(h=ball_radius*3, ir=mouth_bottom_radius_x, or=ball_radius*2, orient=BACK, center=true);
+
+                zscale(mouth_bottom_radius_z/mouth_bottom_radius_x)
+                cyl(h=ball_radius*3, r=mouth_bottom_radius_x-eye_and_mouth_border, orient=BACK);
+            }
+
+            // outline bottom
+            color("black")
+            difference() {
+                sphere(r=ball_radius+thickness*2);
+                sphere(r=ball_radius);
+
+                zscale(mouth_top_radius_z/mouth_top_radius_x)
+                tube(h=ball_radius*3, ir=mouth_top_radius_x+eye_and_mouth_border, or=ball_radius*2, orient=BACK, center=true);
+
+                zscale(mouth_top_radius_z/mouth_top_radius_x)
+                cyl(h=ball_radius*3, r=mouth_top_radius_x, orient=BACK);
+            }
+
+        }
+        xflip_copy()
+        left(eye_width/2+eye_separation/2) {
+            zscale(eye_height/eye_width)
+            cyl(h=ball_radius*3, r=eye_width, orient=BACK, center=true);
+        }
+    }
+}
+
+module head_approximation() {
+    // zscale(760/560)
+    yscale(crown_circumference_major/crown_circumference_minor)
+    hull()
+    zcopies((760-560)/2)
+    spheroid(r=570/PI/2);
+}
+
+module crown_attachment() {
+    echo("_crown_attachment_length", _crown_attachment_length);
+    difference() {
+        union() {
+            up(_top_ring_height_offset)
+            cyl(r=_top_cutout_radius-outer_segment_width-slop, h=outer_segment_width, anchor=TOP);
+
+            up(_top_ring_height_offset-outer_segment_width)
+            zrot(360/7/4)
+            cyl(r1=crown_radius, r2=_top_cutout_radius-outer_segment_width+slop, h=_crown_attachment_length, anchor=TOP, $fn=7, circum=true);
+        }
+        up(_top_ring_height_offset+.1)
+        cyl(r1=crown_radius-outer_segment_width, r2=_top_cutout_radius-outer_segment_width*2, h=_crown_attachment_length+outer_segment_width+.2, anchor=TOP);
+
+        down((mouth_bottom_radius_z+mouth_top_radius_z)/2)
+        yscale(crown_circumference_major/crown_circumference_minor)
+        spheroid(r=760/PI/2);
+
+        ycopies(130+70)
+        cuboid([ball_radius*2, 70, ball_radius*2]);
+
+        cuboid([ball_radius*2, 20, outer_segment_width]);
+
+        // up(_crown_attachment_length/2 - outer_segment_width*2)
+        // zrot_copies([0,60,120])
+        // cuboid([crown_radius/6, ball_radius*2, _crown_attachment_length-outer_segment_width*4], chamfer=crown_radius/12, edges="Y");
+
+        // up(_crown_attachment_length/3 - outer_segment_width*2)
+        // zrot_copies([30,90,150])
+        // cuboid([crown_radius/6, ball_radius*2, _crown_attachment_length*2/3-outer_segment_width*4], chamfer=crown_radius/12, edges="Y");
     }
 }
 
 
 // bottom_half()
 // back_half()
-// union() {
+union() {
+    // color("#FF990099")
+    // down((mouth_bottom_radius_z+mouth_top_radius_z)/2)
+    // #head_approximation();
+
+    crown_attachment();
+
     // up(explode ? -explode_distance*2 : 0)
-    // // top ring connector
+    // // bottom ring connector
     // color("#FF330099")
     // bottom_ring();
 
-    // // bottom vertical rings
+    // // bottom legs
     // up(explode ? -explode_distance : 0)
     // color("#FFAACC55")
     // zrot_copies(n=outer_segments)
     // bottom_leg();
 
-    // center ring connector
-    color("#FFFF0055")
+    // // center ring connector
+    // color("#FFFF0055")
     // zrot_copies(n=outer_segments)
-    middle_ring();
+    // middle_ring();
 
-    // // top vertical rings
+    // // top legs
     // up(explode ? explode_distance : 0)
     // color("#AACCFF55")
     // zrot_copies(n=outer_segments)
@@ -191,5 +373,11 @@ module middle_ring() {
     // color("#FF990099")
     // top_ring();
 
+    // // sphere(r=ball_radius);
 
-// }
+    // xflip_copy()
+    // eyes();
+
+    // mouth();
+
+}
