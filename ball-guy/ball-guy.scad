@@ -192,16 +192,25 @@ module middle_ring() {
 }
 
 module eyes() {
+    module ball(r) {
+        cache()
+        front_half(y=-sin(acos((eye_width*3/2+eye_separation/2)/ball_radius))*ball_radius, s=ball_radius*8)
+        left_half(s=ball_radius*8)
+        sphere(r=r);
+    }
+
     front_half() {
         union() {
             // base
             color("white")
             difference() {
-                sphere(r=ball_radius+thickness);
-                sphere(r=ball_radius);
+                echo("front half", -sin(acos((eye_width*3/2+eye_separation/2)/ball_radius))*ball_radius);
+                ball(r=ball_radius+thickness);
+                ball(r=ball_radius);
 
                 left(eye_width/2+eye_separation/2) {
                     zscale(eye_height/eye_width)
+                    front_half(y=-sin(acos((eye_width*3/2+eye_separation/2)/ball_radius))*ball_radius+1, s=ball_radius*8)
                     tube(h=ball_radius*3, ir=eye_width, or=ball_radius*2, orient=BACK, center=true);
                 }
             }
@@ -209,12 +218,15 @@ module eyes() {
             // outer ring
             color("black")
             difference() {
-                sphere(r=ball_radius+thickness*2);
-                sphere(r=ball_radius+thickness);
+                ball(r=ball_radius+thickness*2);
+                ball(r=ball_radius+thickness);
 
                 left(eye_width/2+eye_separation/2) {
                     zscale(eye_height/eye_width) {
+                        front_half(y=-sin(acos((eye_width*3/2+eye_separation/2)/ball_radius))*ball_radius+1, s=ball_radius*8)
                         tube(h=ball_radius*3, ir=eye_width, or=ball_radius*2, orient=BACK, center=true);
+                        
+                        front_half(y=-sin(acos((eye_width*3/2+eye_separation/2)/ball_radius))*ball_radius+1, s=ball_radius*8)
                         cyl(h=ball_radius*3, r=eye_width-eye_and_mouth_border, orient=BACK);
                     }
                 }
@@ -223,12 +235,14 @@ module eyes() {
             // inner
             color("black")
             difference() {
-                sphere(r=ball_radius+thickness*2);
-                sphere(r=ball_radius+thickness);
+                ball(r=ball_radius+thickness*2);
+                ball(r=ball_radius+thickness);
 
                 left(eye_width/4+eye_separation/2) {
                     zscale(eye_height/eye_width) {
+                        front_half(y=-sin(acos((eye_width*3/2+eye_separation/2)/ball_radius))*ball_radius+1, s=ball_radius*8)
                         tube(h=ball_radius*3, ir=eye_width*2/3, or=ball_radius*2, orient=BACK, center=true);
+                        front_half(y=-sin(acos((eye_width*3/2+eye_separation/2)/ball_radius))*ball_radius+1, s=ball_radius*8)
                         cyl(h=ball_radius*3, r=eye_width/3, orient=BACK);
                     }
                 }
@@ -303,39 +317,6 @@ module head_approximation() {
     spheroid(r=570/PI/2);
 }
 
-module crown_attachment() {
-    echo("_crown_attachment_length", _crown_attachment_length);
-    difference() {
-        union() {
-            up(_top_ring_height_offset)
-            cyl(r=_top_cutout_radius-outer_segment_width-slop, h=outer_segment_width, anchor=TOP);
-
-            up(_top_ring_height_offset-outer_segment_width)
-            zrot(360/7/4)
-            cyl(r1=crown_radius, r2=_top_cutout_radius-outer_segment_width+slop, h=_crown_attachment_length, anchor=TOP, $fn=7, circum=true);
-        }
-        up(_top_ring_height_offset+.1)
-        cyl(r1=crown_radius-outer_segment_width, r2=_top_cutout_radius-outer_segment_width*2, h=_crown_attachment_length+outer_segment_width+.2, anchor=TOP);
-
-        down((mouth_bottom_radius_z+mouth_top_radius_z)/2)
-        yscale(crown_circumference_major/crown_circumference_minor)
-        spheroid(r=760/PI/2);
-
-        ycopies(130+70)
-        cuboid([ball_radius*2, 70, ball_radius*2]);
-
-        cuboid([ball_radius*2, 20, outer_segment_width]);
-
-        // up(_crown_attachment_length/2 - outer_segment_width*2)
-        // zrot_copies([0,60,120])
-        // cuboid([crown_radius/6, ball_radius*2, _crown_attachment_length-outer_segment_width*4], chamfer=crown_radius/12, edges="Y");
-
-        // up(_crown_attachment_length/3 - outer_segment_width*2)
-        // zrot_copies([30,90,150])
-        // cuboid([crown_radius/6, ball_radius*2, _crown_attachment_length*2/3-outer_segment_width*4], chamfer=crown_radius/12, edges="Y");
-    }
-}
-
 
 // bottom_half()
 // back_half()
@@ -344,40 +325,39 @@ union() {
     // down((mouth_bottom_radius_z+mouth_top_radius_z)/2)
     // #head_approximation();
 
-    crown_attachment();
 
-    // up(explode ? -explode_distance*2 : 0)
-    // // bottom ring connector
-    // color("#FF330099")
-    // bottom_ring();
+    up(explode ? -explode_distance*2 : 0)
+    // bottom ring connector
+    color("#FF330099")
+    bottom_ring();
 
-    // // bottom legs
-    // up(explode ? -explode_distance : 0)
-    // color("#FFAACC55")
-    // zrot_copies(n=outer_segments)
-    // bottom_leg();
+    // bottom legs
+    up(explode ? -explode_distance : 0)
+    color("#FFAACC55")
+    zrot_copies(n=outer_segments)
+    bottom_leg();
 
-    // // center ring connector
-    // color("#FFFF0055")
-    // zrot_copies(n=outer_segments)
-    // middle_ring();
+    // center ring connector
+    color("#FFFF0055")
+    zrot_copies(n=outer_segments)
+    middle_ring();
 
-    // // top legs
-    // up(explode ? explode_distance : 0)
-    // color("#AACCFF55")
-    // zrot_copies(n=outer_segments)
-    // top_leg();
+    // top legs
+    up(explode ? explode_distance : 0)
+    color("#AACCFF55")
+    zrot_copies(n=outer_segments)
+    top_leg();
 
-    // up(explode ? explode_distance*2 : 0)
-    // // top ring connector
-    // color("#FF990099")
-    // top_ring();
+    up(explode ? explode_distance*2 : 0)
+    // top ring connector
+    color("#FF990099")
+    top_ring();
 
-    // // sphere(r=ball_radius);
+    // sphere(r=ball_radius);
 
-    // xflip_copy()
-    // eyes();
+    xflip_copy()
+    eyes();
 
-    // mouth();
+    mouth();
 
 }
